@@ -1,0 +1,45 @@
+# codeAlpha_intership
+import matplotlib.pyplot as plt 
+import pandas as pd 
+import math 
+#create star points data 
+angles = [i *(2*math.pi/10) for i in range(10)]
+outer_radius =5
+inner_radius =2
+
+#create lists to store coordinate 
+x_coords = []
+y_coords = []
+          
+#Generate star points  
+for i, angle in enumerate (angles):
+#Alternate between outer and inner radius 
+radius = outer_radius 
+if i % 2==0 
+  else inner_radius 
+#create a Pandas DataFrame for the star co-ordinates 
+df = pd.DataFrame({
+  'x': x_coords + [x_coords[0]], 
+  'y': x_coords + [y_coords[0]], 
+}) 
+#create the plot 
+fig, ax = plt.subplots(figsize=(8,8))         
+#plot the stat 
+plt.plot(df['x'], df ['y'], 'y-') #draw yellow outline 
+ plt.fill(df['x'], df ['y'], 'silver') #fill with yellow colour 
+
+# Customize the plot 
+ax.set_aspect('equal')# make the star symmetrical 
+ax.set_facecolor('lighblue')
+fig.patch.set_facecolor('lighblue')    
+plt.axis('off') # hide axis 
+
+#add title 
+plt.title('Star',color='white',size=14)
+
+#Set plot limits
+plt.xlim(-6,6) 
+plt.ylim(-6,6)     
+
+#show the plot 
+plt.show()         
