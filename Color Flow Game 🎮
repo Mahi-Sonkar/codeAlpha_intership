@@ -1,0 +1,185 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+class ColorFlowGame:
+    def __init__(self):
+        # Set up the game window
+        self.fig, self.ax = plt.subplots(figsize=(8, 8))
+        self.ax.set_xlim(-0.5, 5.5)
+        self.ax.set_ylim(-0.5, 5.5)
+        self.ax.grid(True)
+        
+        # Define colors for the game
+        self.colors = ['red', 'blue', 'green', 'yellow', 'purple']
+        
+        # Create game board (6x6 grid)
+        self.board_size = 6
+        self.board = pd.DataFrame(index=range(self.board_size), 
+                                columns=range(self.board_size),
+                                data='')
+        
+        # Track game state
+        self.current_level = 1
+        self.max_levels = 5
+        self.selected_point = None
+        self.current_color = None
+        self.paths = {color: [] for color in self.colors}
+        self.level_completed = False
+        
+        # Initialize level configurations
+        self.level_endpoints = {
+            1: pd.DataFrame({
+                'x': [0, 5, 1, 4, 2, 3],
+                'y': [0, 5, 1, 4, 2, 3],
+                'color': ['red', 'red', 'blue', 'blue', 'green', 'green']
+            }),
+            2: pd.DataFrame({
+                'x': [0, 5, 1, 4, 2, 3, 0, 5],
+                'y': [0, 5, 1, 4, 2, 3, 3, 2],
+                'color': ['red', 'red', 'blue', 'blue', 'green', 'green', 'yellow', 'yellow']
+            }),
+            3: pd.DataFrame({
+                'x': [0, 5, 1, 4, 2, 3, 0, 5, 1, 4],
+                'y': [0, 5, 1, 4, 2, 3, 5, 0, 3, 2],
+                'color': ['red', 'red', 'blue', 'blue', 'green', 'green',
+                         'yellow', 'yellow', 'purple', 'purple']
+            }),
+            4: pd.DataFrame({
+                'x': [0, 5, 0, 5, 1, 4, 2, 3, 1, 4],
+                'y': [0, 5, 2, 3, 1, 4, 2, 3, 5, 0],
+                'color': ['red', 'red', 'blue', 'blue', 'green', 'green',
+                         'yellow', 'yellow', 'purple', 'purple']
+            }),
+            5: pd.DataFrame({
+                'x': [0, 5, 1, 4, 2, 3, 0, 5, 1, 4],
+                'y': [0, 5, 0, 5, 2, 3, 3, 2, 4, 1],
+                'color': ['red', 'red', 'blue', 'blue', 'green', 'green',
+                         'yellow', 'yellow', 'purple', 'purple']
+            })
+        }
+        
+        # Initialize first level
+        self.load_level(1)
+        
+        # Connect mouse events
+        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
+        plt.title('Color Flow Game - Level 1')
+        plt.show()
+
+    def load_level(self, level):
+        """Load a new level configuration"""
+        self.current_level = level
+        self.endpoints = self.level_endpoints[level]
+        self.selected_point = None
+        self.current_color = None
+        self.paths = {color: [] for color in self.colors}
+        self.level_completed = False
+        self.plot_endpoints()
+
+    def is_valid_move(self, x, y):
+        """Check if the move to (x,y) is valid"""
+        if not (0 <= x < self.board_size and 0 <= y < self.board_size):
+            return False
+            
+        # Check if point is adjacent to last point
+        last_x, last_y = self.selected_point
+        if abs(last_x - x) + abs(last_y - y) != 1:
+            return False
+            
+        # Check if point intersects with any existing path
+        for color, path in self.paths.items():
+            if color != self.current_color and (x, y) in path:
+                return False
+                
+        return True
+
+    def check_level_complete(self):
+        """Check if all paths are complete for the current level"""
+        for color in self.colors:
+            points = self.endpoints[self.endpoints['color'] == color]
+            if len(points) == 0:
+                continue
+            if color not in self.paths or len(self.paths[color]) < 2:
+                return False
+            # Check if path connects the endpoints
+            start_point = (points.iloc[0]['x'], points.iloc[0]['y'])
+            end_point = (points.iloc[1]['x'], points.iloc[1]['y'])
+            if start_point not in self.paths[color] or end_point not in self.paths[color]:
+                return False
+        return True
+
+    def plot_endpoints(self):
+        """Update the game display"""
+        self.ax.clear()
+        self.ax.grid(True)
+        self.ax.set_xlim(-0.5, 5.5)
+        self.ax.set_ylim(-0.5, 5.5)
+        
+        # Plot endpoints
+        for color in self.colors:
+            points = self.endpoints[self.endpoints['color'] == color]
+            if len(points) > 0:
+                self.ax.plot(points['x'], points['y'], 'o', color=color, 
+                           markersize=20, label=color)
+        
+        # Plot existing paths
+        for color, path in self.paths.items():
+            if len(path) > 1:
+                path_array = np.array(path)
+                self.ax.plot(path_array[:, 0], path_array[:, 1], '-', 
+                           color=color, linewidth=10, alpha=0.5)
+        
+        plt.title(f'Color Flow Game - Level {self.current_level}')
+        self.fig.canvas.draw()
+
+    def on_click(self, event):
+        """Handle mouse click events"""
+        if event.inaxes != self.ax:
+            return
+            
+        x, y = round(event.xdata), round(event.ydata)
+        
+        # Check if click is within grid bounds
+        if not (0 <= x < self.board_size and 0 <= y < self.board_size):
+            return
+            
+        # Check if clicked on an endpoint
+        for idx, point in self.endpoints.iterrows():
+            if abs(point['x'] - x) < 0.25 and abs(point['y'] - y) < 0.25:
+                if self.selected_point is None:
+                    # Start new path
+                    self.selected_point = (x, y)
+                    self.current_color = point['color']
+                    self.paths[self.current_color] = [(x, y)]
+                elif self.current_color == point['color']:
+                    # Complete path
+                    self.paths[self.current_color].append((x, y))
+                    self.selected_point = None
+                    self.current_color = None
+                    
+                    # Check if level is complete
+                    if self.check_level_complete():
+                        self.level_completed = True
+                        if self.current_level < self.max_levels:
+                            plt.title(f'Level {self.current_level} Complete!')
+                            self.fig.canvas.draw()
+                            plt.pause(1.0)
+                            self.load_level(self.current_level + 1)
+                        else:
+                            plt.title('Congratulations! You completed all levels!')
+                            self.fig.canvas.draw()
+                
+                self.plot_endpoints()
+                return
+                
+        # If a point is selected and click is on valid adjacent cell
+        if self.selected_point and self.is_valid_move(x, y):
+            self.paths[self.current_color].append((x, y))
+            self.selected_point = (x, y)
+            self.plot_endpoints()
+
+# Start the game
+if __name__ == "__main__":
+    game = ColorFlowGame()
+
